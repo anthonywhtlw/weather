@@ -298,7 +298,7 @@ export default function Dashboard() {
           <section className={CARD}>
             <div className="flex items-baseline justify-between gap-4">
               <p className="text-sm font-medium text-slate-300">Temperature history</p>
-              <p className="text-xs text-slate-500">live from Postgres</p>
+              <p className="text-xs text-slate-500">°F · live from Postgres</p>
             </div>
             <TemperatureChart readings={history?.readings ?? []} />
           </section>
