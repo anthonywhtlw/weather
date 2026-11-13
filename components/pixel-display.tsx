@@ -97,15 +97,15 @@ export default function PixelDisplay({ temperatureC }: { temperatureC: number })
   const cells = art.rows.slice(0, 16).map((row) => row.padEnd(WIDTH, ".").slice(0, WIDTH));
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3">
       <div
-        className="rounded-xl bg-black/55 p-2.5 ring-1 ring-white/10"
-        style={{ boxShadow: `0 0 48px ${art.glow}, inset 0 0 22px rgba(0,0,0,0.65)` }}
+        className="w-full max-w-[200px] rounded-xl bg-black/55 p-2.5 ring-1 ring-white/10"
+        style={{ boxShadow: `0 0 40px ${art.glow}, inset 0 0 22px rgba(0,0,0,0.65)` }}
         role="img"
         aria-label={`${art.label}: ${temperatureC.toFixed(1)} degrees Celsius`}
       >
         <div
-          className="grid gap-[2px]"
+          className="grid w-full gap-[2px]"
           style={{ gridTemplateColumns: `repeat(${WIDTH}, minmax(0, 1fr))` }}
         >
           {cells.flatMap((row, y) =>
