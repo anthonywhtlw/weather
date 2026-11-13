@@ -1,5 +1,7 @@
 "use client";
 
+import { weatherMood, type Mood } from "@/lib/weather";
+
 const WIDTH = 16;
 
 type Art = {
@@ -85,15 +87,10 @@ const MILD: Art = {
   note: "Room is comfortable.",
 };
 
-/** Hot above 25 °C, cold below 18 °C, mild in between. */
-function artFor(celsius: number): Art {
-  if (celsius >= 25) return FIRE;
-  if (celsius <= 18) return ICE;
-  return MILD;
-}
+const ART_BY_MOOD: Record<Mood, Art> = { hot: FIRE, cold: ICE, mild: MILD };
 
 export default function PixelDisplay({ temperatureC }: { temperatureC: number }) {
-  const art = artFor(temperatureC);
+  const art = ART_BY_MOOD[weatherMood(temperatureC)];
   const cells = art.rows.slice(0, 16).map((row) => row.padEnd(WIDTH, ".").slice(0, WIDTH));
 
   return (

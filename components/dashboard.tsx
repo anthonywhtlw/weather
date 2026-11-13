@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeHumidity, toFahrenheit } from "@/lib/weather";
 import PixelDisplay from "@/components/pixel-display";
+import TemperatureChart from "@/components/temperature-chart";
 
 type Reading = { timestamp: string; temperature: number; humidity: number | null };
 type History = { readings: Reading[]; threshold_c: number };
@@ -38,54 +39,6 @@ function formatDay(date: string): string {
   } catch {
     return date;
   }
-}
-
-function Sparkline({ readings }: { readings: Reading[] }) {
-  const points = [...readings].reverse();
-
-  if (points.length < 2) {
-    return (
-      <p className="mt-6 text-sm text-slate-400">
-        The chart draws itself once a couple of readings have arrived.
-      </p>
-    );
-  }
-
-  const W = 640;
-  const H = 170;
-  const PAD = 10;
-  const temps = points.map((p) => p.temperature);
-  const min = Math.min(...temps);
-  const max = Math.max(...temps);
-  const span = max - min || 1;
-
-  const x = (i: number) => PAD + (i * (W - PAD * 2)) / (points.length - 1);
-  const y = (t: number) => PAD + (1 - (t - min) / span) * (H - PAD * 2);
-
-  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.temperature)}`).join(" ");
-  const area = `${line} L${x(points.length - 1)},${H - PAD} L${x(0)},${H - PAD} Z`;
-
-  return (
-    <div className="mt-4">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-44 w-full" role="img" aria-label="Temperature history">
-        <defs>
-          <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f87171" stopOpacity="0.38" />
-            <stop offset="100%" stopColor="#f87171" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#chartFill)" />
-        <path d={line} fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      </svg>
-      <div className="flex justify-between text-xs text-slate-500">
-        <span>oldest · {points.length} readings</span>
-        <span>
-          {min.toFixed(1)} – {max.toFixed(1)} °C
-        </span>
-        <span>now</span>
-      </div>
-    </div>
-  );
 }
 
 export default function Dashboard() {
@@ -306,9 +259,9 @@ export default function Dashboard() {
           <section className={CARD}>
             <div className="flex items-baseline justify-between gap-4">
               <p className="text-sm font-medium text-slate-300">Temperature history</p>
-              <p className="text-xs text-slate-500">from Postgres, newest first</p>
+              <p className="text-xs text-slate-500">live from Postgres</p>
             </div>
-            <Sparkline readings={history?.readings ?? []} />
+            <TemperatureChart readings={history?.readings ?? []} />
           </section>
 
           <section>
