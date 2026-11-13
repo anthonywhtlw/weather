@@ -17,6 +17,8 @@ type ForecastDay = { date: string; max: number; min: number };
 
 const POLL_MS = 5000;
 const FORECAST_MS = 30 * 60 * 1000;
+/** A reading older than this means the board stopped, not that the page did. */
+const STALE_MS = 30_000;
 const TZ = STATION_TIME_ZONE;
 const STATION = "medford-01";
 
@@ -59,6 +61,19 @@ function formatClock(iso: string): string {
   } catch {
     return "—";
   }
+}
+
+/** "18s ago", "4 min ago" — how old the newest reading is. */
+function relativeAge(ms: number | null): string | null {
+  if (ms === null) return null;
+
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  if (seconds < 90) return `${seconds}s ago`;
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 90) return `${minutes} min ago`;
+
+  return `${Math.round(minutes / 60)} hr ago`;
 }
 
 function formatDay(date: string): string {
@@ -160,14 +175,40 @@ export default function Dashboard() {
   const mood: Mood = latest ? weatherMood(latest.temperature) : "mild";
   const accent = MOOD_ACCENT[mood];
 
-  const statusLabel =
-    status === "live" ? "Live" : status === "offline" ? "Offline" : "Connecting";
-  const statusTone =
-    status === "live"
-      ? "bg-emerald-400/15 text-emerald-300 ring-emerald-400/30"
+  // "Live" has to mean the board is actually reporting, not merely that the fetch
+  // worked. With the board unplugged the page still loads — from old rows.
+  const ageMs = latest ? Date.now() - Date.parse(latest.timestamp) : null;
+  const health: "starting" | "live" | "stale" | "offline" =
+    status === "starting"
+      ? "starting"
       : status === "offline"
-        ? "bg-amber-400/15 text-amber-300 ring-amber-400/30"
-        : "bg-white/10 text-slate-300 ring-white/20";
+        ? "offline"
+        : ageMs !== null && ageMs > STALE_MS
+          ? "stale"
+          : "live";
+
+  const statusLabel = {
+    starting: "Connecting",
+    live: "Live",
+    stale: "Stale",
+    offline: "Offline",
+  }[health];
+
+  const statusTone = {
+    live: "bg-emerald-400/15 text-emerald-300 ring-emerald-400/30",
+    stale: "bg-amber-400/15 text-amber-200 ring-amber-400/40",
+    offline: "bg-amber-400/15 text-amber-300 ring-amber-400/30",
+    starting: "bg-white/10 text-slate-300 ring-white/20",
+  }[health];
+
+  const statusDetail =
+    health === "live" || health === "stale"
+      ? latest
+        ? health === "live"
+          ? formatClock(latest.timestamp)
+          : relativeAge(ageMs)
+        : null
+      : null;
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
@@ -197,7 +238,9 @@ export default function Dashboard() {
           </p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ${statusTone}`}>
-          {status === "live" && latest ? `● ${statusLabel} · ${formatClock(latest.timestamp)}` : statusLabel}
+          {health === "starting"
+            ? statusLabel
+            : `● ${statusLabel}${statusDetail ? ` · ${statusDetail}` : ""}`}
         </span>
       </header>
 
