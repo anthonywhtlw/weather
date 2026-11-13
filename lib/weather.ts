@@ -1,3 +1,6 @@
+/** Every station in the class is in Medford, so one timezone is enough. */
+export const STATION_TIME_ZONE = "America/New_York";
+
 export function toFahrenheit(celsius: number): number {
   return celsius * 1.8 + 32;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { weatherMood, type Mood } from "@/lib/weather";
+import { STATION_TIME_ZONE, weatherMood, type Mood } from "@/lib/weather";
 
 type Reading = { timestamp: string; temperature: number };
 
@@ -40,6 +40,18 @@ const THEMES: Record<Mood, Theme> = {
 
 const toF = (celsius: number): number => celsius * 1.8 + 32;
 const toC = (fahrenheit: number): number => (fahrenheit - 32) / 1.8;
+
+function formatAxisTime(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: STATION_TIME_ZONE,
+    }).format(new Date(iso));
+  } catch {
+    return "";
+  }
+}
 
 /** A tick spacing that lands on round Fahrenheit numbers: 1, 2, 5, 10, … */
 function niceStep(span: number, targetTicks = 4): number {
@@ -94,10 +106,13 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
   const theme = THEMES[mood];
 
   const W = 640;
-  const H = 190;
-  const PAD_LEFT = 44;
-  const PAD_RIGHT = 16;
-  const PAD_Y = 18;
+  const H = 210;
+  const PAD_LEFT = 46;
+  const PAD_RIGHT = 18;
+  const PAD_TOP = 18;
+  const PAD_BOTTOM = 30;
+  const plotTop = PAD_TOP;
+  const plotBottom = H - PAD_BOTTOM;
 
   const temps = points.map((point) => point.temperature);
   const rawMin = Math.min(...temps);
@@ -110,7 +125,7 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
   const spanC = maxC - minC;
 
   const yFor = (celsius: number) =>
-    PAD_Y + (1 - (celsius - minC) / spanC) * (H - PAD_Y * 2);
+    plotTop + (1 - (celsius - minC) / spanC) * (plotBottom - plotTop);
 
   // A three-sample average used only for drawing. The sensor reports 0.1 °C
   // steps, so the raw series is a staircase; the eye wants a line.
@@ -130,8 +145,13 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
   }));
 
   const line = smoothPath(plotted);
-  const area = `${line} L${plotted[plotted.length - 1].x.toFixed(1)},${H - PAD_Y} L${plotted[0].x.toFixed(1)},${H - PAD_Y} Z`;
+  const area = `${line} L${plotted[plotted.length - 1].x.toFixed(1)},${plotBottom} L${plotted[0].x.toFixed(1)},${plotBottom} Z`;
   const head = plotted[plotted.length - 1];
+
+  const xTickIndices =
+    points.length >= 3
+      ? [0, Math.floor((points.length - 1) / 2), points.length - 1]
+      : [0, points.length - 1];
 
   // Fahrenheit gridlines, positioned with the Celsius scale they sit on.
   const fMin = toF(minC);
@@ -154,9 +174,9 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
     >
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="h-48 w-full"
+        className="h-52 w-full"
         role="img"
-        aria-label={`Temperature history in Fahrenheit, ${theme.label}, ${toF(min).toFixed(1)} to ${toF(max).toFixed(1)} degrees`}
+        aria-label={`Room temperature history in Fahrenheit, ${theme.label}, ${toF(min).toFixed(1)} to ${toF(max).toFixed(1)} degrees`}
       >
         <defs>
           <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
@@ -200,7 +220,7 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
 
         <text
           x={PAD_LEFT - 10}
-          y={PAD_Y - 6}
+          y={PAD_TOP - 6}
           textAnchor="end"
           fontSize="9.5"
           fill="rgba(255,255,255,0.32)"
@@ -231,6 +251,21 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
           strokeWidth="2"
           filter="url(#chartGlow)"
         />
+
+        {xTickIndices.map((index, position) => (
+          <text
+            key={`tick-${index}`}
+            x={plotted[index].x}
+            y={H - 9}
+            textAnchor={
+              position === 0 ? "start" : position === xTickIndices.length - 1 ? "end" : "middle"
+            }
+            fontSize="10.5"
+            fill="rgba(255,255,255,0.42)"
+          >
+            {formatAxisTime(points[index].timestamp)}
+          </text>
+        ))}
       </svg>
     </div>
   );

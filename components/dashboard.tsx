@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { describeHumidity, toFahrenheit, weatherMood, type Mood } from "@/lib/weather";
+import {
+  describeHumidity,
+  STATION_TIME_ZONE,
+  toFahrenheit,
+  weatherMood,
+  type Mood,
+} from "@/lib/weather";
 import PixelDisplay from "@/components/pixel-display";
 import TemperatureChart from "@/components/temperature-chart";
 
@@ -11,7 +17,7 @@ type ForecastDay = { date: string; max: number; min: number };
 
 const POLL_MS = 5000;
 const FORECAST_MS = 30 * 60 * 1000;
-const TZ = "America/New_York";
+const TZ = STATION_TIME_ZONE;
 const STATION = "medford-01";
 
 const CARD =
@@ -297,7 +303,7 @@ export default function Dashboard() {
 
           <section className={CARD}>
             <div className="flex items-baseline justify-between gap-4">
-              <p className="text-sm font-medium text-slate-300">Temperature history</p>
+              <p className="text-sm font-medium text-slate-300">Room temperature history</p>
               <p className="text-xs text-slate-500">°F · live from Postgres</p>
             </div>
             <TemperatureChart readings={history?.readings ?? []} />
