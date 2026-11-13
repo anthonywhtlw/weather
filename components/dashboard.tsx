@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { describeHumidity, toFahrenheit } from "@/lib/weather";
+import { describeHumidity, toFahrenheit, weatherMood, type Mood } from "@/lib/weather";
 import PixelDisplay from "@/components/pixel-display";
 import TemperatureChart from "@/components/temperature-chart";
 
@@ -17,6 +17,30 @@ const STATION = "medford-01";
 const CARD =
   "relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06] p-6 backdrop-blur-xl";
 const BIG = "tabular mt-5 flex items-start gap-1 text-6xl font-semibold leading-none tracking-tight";
+
+/** Full-page lighting, one layer per mood, crossfaded by opacity. */
+const MOOD_BACKGROUND: Record<Mood, string> = {
+  hot: [
+    "radial-gradient(ellipse 80% 60% at 15% 0%, rgba(239, 68, 68, 0.26), transparent 60%)",
+    "radial-gradient(ellipse 70% 50% at 85% 8%, rgba(249, 115, 22, 0.18), transparent 60%)",
+    "radial-gradient(ellipse 90% 60% at 50% 110%, rgba(190, 18, 60, 0.20), transparent 60%)",
+  ].join(", "),
+  cold: [
+    "radial-gradient(ellipse 80% 60% at 15% 0%, rgba(56, 189, 248, 0.24), transparent 60%)",
+    "radial-gradient(ellipse 70% 50% at 85% 8%, rgba(14, 165, 233, 0.18), transparent 60%)",
+    "radial-gradient(ellipse 90% 60% at 50% 110%, rgba(8, 145, 178, 0.20), transparent 60%)",
+  ].join(", "),
+  mild: [
+    "radial-gradient(ellipse 70% 45% at 50% -10%, rgba(255, 255, 255, 0.16), transparent 65%)",
+    "radial-gradient(ellipse 90% 50% at 50% 115%, rgba(255, 255, 255, 0.05), transparent 60%)",
+  ].join(", "),
+};
+
+const MOOD_ACCENT: Record<Mood, { eyebrow: string; button: string }> = {
+  hot: { eyebrow: "text-red-300/80", button: "bg-red-500 text-white hover:bg-red-400" },
+  cold: { eyebrow: "text-sky-300/80", button: "bg-sky-500 text-white hover:bg-sky-400" },
+  mild: { eyebrow: "text-white/70", button: "bg-white text-slate-900 hover:bg-slate-200" },
+};
 
 function formatClock(iso: string): string {
   try {
@@ -127,6 +151,8 @@ export default function Dashboard() {
   const latest = history?.readings[0] ?? null;
   const threshold = history?.threshold_c ?? null;
   const ledOn = latest !== null && threshold !== null && latest.temperature > threshold;
+  const mood: Mood = latest ? weatherMood(latest.temperature) : "mild";
+  const accent = MOOD_ACCENT[mood];
 
   const statusLabel =
     status === "live" ? "Live" : status === "offline" ? "Offline" : "Connecting";
@@ -139,9 +165,22 @@ export default function Dashboard() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        {(Object.keys(MOOD_BACKGROUND) as Mood[]).map((key) => (
+          <div
+            key={key}
+            className="absolute inset-0 transition-opacity duration-700 ease-out"
+            style={{
+              backgroundImage: MOOD_BACKGROUND[key],
+              opacity: mood === key ? 1 : 0,
+            }}
+          />
+        ))}
+      </div>
+
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-300/80">
+          <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${accent.eyebrow}`}>
             Device to cloud
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -248,7 +287,7 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400 disabled:opacity-60"
+                className={`rounded-full px-4 py-2 text-sm font-medium transition disabled:opacity-60 ${accent.button}`}
               >
                 {saving ? "Saving…" : "Save threshold"}
               </button>
