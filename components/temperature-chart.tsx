@@ -87,9 +87,22 @@ export default function TemperatureChart({ readings }: { readings: Reading[] }) 
   const max = Math.max(...temps);
   const span = max - min || 1;
 
-  const plotted = points.map((point, index) => ({
+  // A three-sample average used only for drawing. The sensor reports 0.1 °C
+  // steps, so the raw series is a staircase; the eye wants a line. The min/max
+  // labels below still report the raw readings.
+  const softened = points.map((_, index) => {
+    const from = Math.max(0, index - 1);
+    const to = Math.min(points.length, index + 2);
+
+    let total = 0;
+    for (let i = from; i < to; i += 1) total += points[i].temperature;
+
+    return total / (to - from);
+  });
+
+  const plotted = softened.map((value, index) => ({
     x: PAD + (index * (W - PAD * 2)) / (points.length - 1),
-    y: PAD + (1 - (point.temperature - min) / span) * (H - PAD * 2),
+    y: PAD + (1 - (value - min) / span) * (H - PAD * 2),
   }));
 
   const line = smoothPath(plotted);
