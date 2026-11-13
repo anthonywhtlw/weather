@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Weather — Current Conditions",
-  description: "Live temperature and humidity for anywhere in the world.",
+  title: "Medford room station",
+  description:
+    "A DHT22 on an ESP32 posts temperature and humidity to PostgreSQL every five seconds; this page is the console.",
 };
 
 export default function RootLayout({

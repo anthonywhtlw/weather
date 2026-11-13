@@ -1,74 +1,98 @@
-# Weather
+# Medford room station
 
-A tiny [Next.js](https://nextjs.org) app that shows the **current temperature and humidity**
-for any city in the world. Built to deploy on [Vercel](https://vercel.com) with zero configuration
-and **no API keys**.
-
-![Next.js](https://img.shields.io/badge/Next.js-16-black) ![Vercel](https://img.shields.io/badge/deploy-Vercel-black)
+An ESP32 with a DHT22 posts its temperature and humidity to Postgres every five seconds.
+This Next.js app is the console: it stores the readings, draws the history, and shows a
+five-day forecast. Deployed on [Vercel](https://vercel.com) with a Neon database.
 
 **Live:** <https://weather-one-virid.vercel.app>
 
+![Next.js](https://img.shields.io/badge/Next.js-16-black) ![Vercel](https://img.shields.io/badge/Vercel-deployed-black)
+
 ## What it does
 
-- Current temperature in °F and °C, plus "feels like"
-- Current relative humidity with a comfort read ("Comfortable", "Humid", …)
-- Condition summary and wind speed
-- City search with autocomplete, or use the browser's location
-- Server-rendered and cached for 60 seconds, so it stays fast and cheap
+- `now` — the newest reading from the board, straight out of Postgres, refreshed every 5 seconds
+- a temperature history chart from every reading stored so far
+- a threshold you can change on the page; the board reads it back from its next upload and
+  switches the LED on GPIO 2
+- five days of highs and lows for Medford from [Open-Meteo](https://open-meteo.com), cached 30 minutes
 
-The default location is Medford, MA. Any location can be linked directly:
+The two sources are independent: if Open-Meteo is down the room numbers still show, and if the
+board stops the forecast still loads.
 
+## The API
+
+Four endpoints — the whole app.
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/cloud/history` | `POST` | The board sends `{"station","temperature","humidity"}`. The reply carries `threshold_c`. |
+| `/cloud/history` | `GET` | The page reads the newest readings, each with its timestamp, plus `threshold_c`. |
+| `/cloud/threshold` | `POST` | The page sets `{"threshold_c": 26}` in the single settings row. |
+| `/cloud/forecast` | `GET` | Five days of highs and lows, fetched server-side and cached. |
+
+```bash
+curl -X POST http://localhost:3000/cloud/history \
+  -H 'Content-Type: application/json' \
+  -d '{"station":"medford-01","temperature":22.5,"humidity":40}'
+# {"ok":true,"threshold_c":24}
+
+curl http://localhost:3000/cloud/history
+# {"readings":[{"timestamp":"2026-11-13T21:53:48Z","temperature":22.5,"humidity":40.2}],"threshold_c":26}
 ```
-/?lat=42.3584&lon=-71.0598&name=Boston%2C%20Massachusetts
+
+## The database
+
+Postgres from the Vercel Marketplace (Neon). Create the store under **Storage → Create Database**,
+connect it to the project, and Vercel injects `DATABASE_URL` into the environment.
+
+There is no SQL to run by hand. The app creates both tables on its first request:
+
+```sql
+create table if not exists readings (
+  id bigserial primary key, station text not null,
+  temperature real not null, humidity real,
+  taken_at timestamptz not null default now()
+);
+create table if not exists settings (
+  id int primary key default 1, threshold_c real not null default 24
+);
 ```
-
-## Data source
-
-[Open-Meteo](https://open-meteo.com) — a free, keyless weather API. The forecast endpoint is called
-from a server component, and city search goes through `/api/geocode` so the browser never talks to a
-third party directly.
 
 ## Run locally
 
 ```bash
 npm install
+vercel env pull .env.local --environment=production   # gets DATABASE_URL
 npm run dev
 ```
 
-Open <http://localhost:3000>.
+Open <http://localhost:3000>. Without the board you can `POST` a reading with curl — the dashboard
+fills in within five seconds.
 
 ```bash
-npm run build   # production build
-npm start       # serve the production build
+npm run build
+npm start
 npm run typecheck
 ```
 
-Requires Node.js 20.9 or newer.
+## The board
 
-## Deploy to Vercel
-
-No `vercel.json` or environment variables are needed — Vercel detects Next.js automatically.
-
-**From the dashboard:** import this repository at
-[vercel.com/new](https://vercel.com/new), keep the detected defaults, and deploy.
-
-**From the CLI:**
-
-```bash
-npx vercel        # preview deployment
-npx vercel --prod # production deployment
-```
+`esp32/main.py` connects to Wi-Fi and POSTs every five seconds with `urequests`, prints the status
+and body, closes every response, reads `threshold_c` from the reply, and drives GPIO 2 (the
+onboard LED). Wiring is in `esp32/dht22.yml` — three jumpers: VCC→3V3, DATA→GPIO 4, GND→GND.
 
 ## Project layout
 
 ```
 app/
-  page.tsx              # home page — reads ?lat/?lon/?name and renders the readings
-  layout.tsx            # document shell and metadata
-  globals.css           # Tailwind entry point and page background
-  api/geocode/route.ts  # city search proxy
+  page.tsx                  # renders the dashboard
+  cloud/history/route.ts    # POST from the board, GET for the page
+  cloud/threshold/route.ts  # read and write the settings row
+  cloud/forecast/route.ts   # Open-Meteo, cached 30 minutes
 components/
-  location-search.tsx   # client-side place picker + geolocation button
+  dashboard.tsx             # polls /cloud/history, chart, threshold, forecast cards
 lib/
-  weather.ts            # Open-Meteo client, URL parsing, WMO code + humidity helpers
+  db.ts                     # Neon client, schema bootstrap, queries
+  forecast.ts               # Open-Meteo daily highs and lows
+  weather.ts                # unit and comfort helpers
 ```
