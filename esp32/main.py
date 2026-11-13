@@ -98,6 +98,8 @@ def main():
     threshold = None
 
     while True:
+        started = time.ticks_ms()
+
         if wlan is None or not wlan.isconnected():
             wlan = connect_wifi()
 
@@ -108,7 +110,7 @@ def main():
         except OSError as error:
             # A checksum timeout now and then is normal on a long jumper.
             print("sensor: " + str(error))
-            time.sleep(INTERVAL_S)
+            time.sleep_ms(INTERVAL_S * 1000)
             continue
 
         reported = upload(temperature, humidity)
@@ -126,7 +128,13 @@ def main():
         )
 
         gc.collect()
-        time.sleep(INTERVAL_S)
+
+        # Sleep only the remainder, so a cycle is five seconds end to end
+        # rather than five seconds plus however long the POST took.
+        elapsed = time.ticks_diff(time.ticks_ms(), started)
+        pause = INTERVAL_S * 1000 - elapsed
+        if pause > 0:
+            time.sleep_ms(pause)
 
 
 main()

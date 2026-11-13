@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeHumidity, toFahrenheit } from "@/lib/weather";
+import PixelDisplay from "@/components/pixel-display";
 
 type Reading = { timestamp: string; temperature: number; humidity: number | null };
 type History = { readings: Reading[]; threshold_c: number };
@@ -69,12 +70,12 @@ function Sparkline({ readings }: { readings: Reading[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="h-44 w-full" role="img" aria-label="Temperature history">
         <defs>
           <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
+            <stop offset="0%" stopColor="#f87171" stopOpacity="0.38" />
+            <stop offset="100%" stopColor="#f87171" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#chartFill)" />
-        <path d={line} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={line} fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
       </svg>
       <div className="flex justify-between text-xs text-slate-500">
         <span>oldest · {points.length} readings</span>
@@ -187,7 +188,7 @@ export default function Dashboard() {
     <main className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col gap-8 px-5 py-8 sm:px-8 sm:py-12">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-300/80">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-red-300/80">
             Device to cloud
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -219,7 +220,7 @@ export default function Dashboard() {
         </section>
       ) : (
         <>
-          <section className="grid gap-4 sm:grid-cols-2">
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <article className={CARD}>
               <div className="flex items-start justify-between gap-4">
                 <p className="text-sm font-medium text-slate-300">Temperature</p>
@@ -250,6 +251,10 @@ export default function Dashboard() {
               <p className="mt-3 text-sm text-slate-400">
                 {latest.humidity === null ? "not reported" : describeHumidity(latest.humidity)}
               </p>
+            </article>
+
+            <article className={`${CARD} flex sm:col-span-2 lg:col-span-1`}>
+              <PixelDisplay temperatureC={latest.temperature} />
             </article>
           </section>
 
@@ -290,7 +295,7 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-full bg-sky-400 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-300 disabled:opacity-60"
+                className="rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-400 disabled:opacity-60"
               >
                 {saving ? "Saving…" : "Save threshold"}
               </button>
