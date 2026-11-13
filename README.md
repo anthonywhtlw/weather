@@ -6,6 +6,8 @@ and **no API keys**.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black) ![Vercel](https://img.shields.io/badge/deploy-Vercel-black)
 
+**Live:** <https://weather-one-virid.vercel.app>
+
 ## What it does
 
 - Current temperature in °F and °C, plus "feels like"
